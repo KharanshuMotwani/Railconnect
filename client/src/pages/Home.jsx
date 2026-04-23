@@ -61,13 +61,30 @@ export default function Home() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Guard: if selected date is before today, reset to today
+    const handleDateChange = (e) => {
+        const selected = e.target.value;
+        if (selected && selected < today) {
+            setDate(today);
+        } else if (selected && selected > maxDate) {
+            setDate(maxDate);
+        } else {
+            setDate(selected);
+        }
+    };
+
     useEffect(() => {
+        // Double-check: skip search entirely if date is in the past
+        if (date && date < today) {
+            setDate(today);
+            setIsSearching(false);
+            return;
+        }
+
         setIsSearching(true);
 
-        // Using setTimeout as a debounce for our generic search terms
         const delay = setTimeout(async () => {
             try {
-                // Here we trigger the simulated API fetch Request to /api/v1/trains/search
                 const response = await searchTrains(searchFrom, searchTo, date);
                 setFilteredTrains(response.data);
             } catch (err) {
@@ -76,7 +93,7 @@ export default function Home() {
             } finally {
                 setIsSearching(false);
             }
-        }, 500); // 500ms debounce
+        }, 500);
 
         return () => clearTimeout(delay);
     }, [searchFrom, searchTo, date]);
@@ -356,7 +373,7 @@ export default function Home() {
                                                 <input
                                                     type="date"
                                                     value={date}
-                                                    onChange={(e) => setDate(e.target.value)}
+                                                    onChange={handleDateChange}
                                                     min={today}
                                                     max={maxDate}
                                                     className="w-full pl-4 pr-10 py-3.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-700 font-bold text-[15px] cursor-pointer"
