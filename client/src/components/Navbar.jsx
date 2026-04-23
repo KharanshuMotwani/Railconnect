@@ -51,7 +51,12 @@ export default function Navbar() {
             const storedUser = localStorage.getItem('user');
             const parsedUser = storedUser ? JSON.parse(storedUser) : null;
             setUser(parsedUser);
-            setBalance(parsedUser ? getWalletBalance(parsedUser.id) : null);
+            if (parsedUser) {
+                initWalletIfNeeded(parsedUser.id);
+                setBalance(getWalletBalance(parsedUser.id));
+            } else {
+                setBalance(null);
+            }
         };
         const updateWallet = () => {
             const storedUser = localStorage.getItem('user');
