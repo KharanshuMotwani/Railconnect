@@ -2,22 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Train, User, LogOut, ChevronDown, Wallet } from 'lucide-react';
 
-const WALLET_KEY = 'rwallet_balance';
-const WALLET_INITIAL = 50000;
+export const WALLET_INITIAL = 50000;
 
-export function getWalletBalance() {
-    const stored = localStorage.getItem(WALLET_KEY);
-    if (stored === null) {
-        localStorage.setItem(WALLET_KEY, WALLET_INITIAL);
-        return WALLET_INITIAL;
-    }
-    return parseInt(stored, 10);
+/** Returns the wallet key scoped to a specific user ID. */
+export function getWalletKey(userId) {
+    return `rwallet_${userId}`;
 }
 
-export function deductWallet(amount) {
-    const balance = getWalletBalance();
+/**
+ * Reads the wallet balance for the given userId.
+ * Returns null if the user is not logged in or has no wallet yet.
+ */
+export function getWalletBalance(userId) {
+    if (!userId) return null;
+    const stored = localStorage.getItem(getWalletKey(userId));
+    return stored !== null ? parseInt(stored, 10) : null;
+}
+
+/**
+ * Initialises the wallet for a user with WALLET_INITIAL only if not set yet.
+ * Safe to call on every login — will NOT overwrite an existing balance.
+ */
+export function initWalletIfNeeded(userId) {
+    const key = getWalletKey(userId);
+    if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, WALLET_INITIAL);
+    }
+}
+
+export function deductWallet(userId, amount) {
+    if (!userId) return null;
+    const balance = getWalletBalance(userId) ?? 0;
     const newBalance = balance - amount;
-    localStorage.setItem(WALLET_KEY, newBalance);
+    localStorage.setItem(getWalletKey(userId), newBalance);
     window.dispatchEvent(new Event('walletUpdate'));
     return newBalance;
 }
@@ -27,14 +44,22 @@ export default function Navbar() {
     const path = location.pathname;
     const [user, setUser] = useState(null);
     const [showDropdown, setShowDropdown] = useState(false);
-    const [balance, setBalance] = useState(getWalletBalance());
+    const [balance, setBalance] = useState(null);
 
     useEffect(() => {
         const checkUser = () => {
             const storedUser = localStorage.getItem('user');
-            setUser(storedUser ? JSON.parse(storedUser) : null);
+            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+            setUser(parsedUser);
+            setBalance(parsedUser ? getWalletBalance(parsedUser.id) : null);
         };
-        const updateWallet = () => setBalance(getWalletBalance());
+        const updateWallet = () => {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const u = JSON.parse(storedUser);
+                setBalance(getWalletBalance(u.id));
+            }
+        };
 
         checkUser();
         window.addEventListener('authChange', checkUser);
@@ -47,6 +72,7 @@ export default function Navbar() {
 
     const handleLogout = () => {
         localStorage.removeItem('user');
+        setBalance(null);
         window.dispatchEvent(new Event('authChange'));
         setShowDropdown(false);
     };
@@ -58,8 +84,8 @@ export default function Navbar() {
         return "hover:text-white transition-colors text-slate-300";
     };
 
-    const formattedBalance = `₹${balance.toLocaleString('en-IN')}`;
-    const isLow = balance < 1000;
+    const formattedBalance = balance !== null ? `₹${balance.toLocaleString('en-IN')}` : '';
+    const isLow = balance !== null && balance < 1000;
 
     return (
         <nav className="bg-[#0B132B]/95 backdrop-blur-md border-b border-slate-800 text-white px-8 py-4 sticky top-0 z-50 transition-all duration-300">
@@ -79,15 +105,17 @@ export default function Navbar() {
                 </div>
 
                 <div className="flex items-center space-x-3">
-                    {/* RWallet Badge */}
-                    <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-sm font-bold transition-all ${
-                        isLow
-                        ? 'bg-red-500/10 border-red-500/40 text-red-400'
-                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                    }`}>
-                        <Wallet className="w-3.5 h-3.5" />
-                        <span>{formattedBalance}</span>
-                    </div>
+                    {/* RWallet Badge — only visible when logged in */}
+                    {user && balance !== null && (
+                        <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-sm font-bold transition-all ${
+                            isLow
+                            ? 'bg-red-500/10 border-red-500/40 text-red-400'
+                            : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        }`}>
+                            <Wallet className="w-3.5 h-3.5" />
+                            <span>{formattedBalance}</span>
+                        </div>
+                    )}
 
                     {user ? (
                         <div className="relative">
