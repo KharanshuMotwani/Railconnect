@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Train, Calendar, MapPin, AlertCircle, CheckCircle, ChevronDown, ChevronRight, ArrowRightLeft, Clock, Zap, Star } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import SeatMap from '../components/SeatMap';
 import PassengerForm from '../components/PassengerForm';
 import SmartAvailability from '../components/SmartAvailability';
@@ -19,13 +17,29 @@ export default function Home() {
     const [searchFrom, setSearchFrom] = useState('');
     const [searchTo, setSearchTo] = useState('');
     const [date, setDate] = useState('');
+
+    // Allow booking from today up to 60 days in advance (2 months max)
+    // Uses local date parts (not toISOString which is UTC) to correctly
+    // reflect the user's timezone (e.g. IST = UTC+5:30)
+    const toLocalDateStr = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+    const today = toLocalDateStr(new Date());
+    const maxDate = (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 60);
+        return toLocalDateStr(d);
+    })();
     const [filteredTrains, setFilteredTrains] = useState([]);
     const [selectedTrain, setSelectedTrain] = useState(null);
     const [bookingStep, setBookingStep] = useState(0); // 0=Search, 1=Seat, 2=Passenger, 3=Payment, 4=Success
     const [selectedSeat, setSelectedSeat] = useState(null);
     const [passengerData, setPassengerData] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [ticketType, setTicketType] = useState('reserved');
+
 
     // Dropdown states
     const [showFromDropdown, setShowFromDropdown] = useState(false);
@@ -76,14 +90,17 @@ export default function Home() {
     const handleSeatSelected = (seat) => {
         setSelectedSeat(seat);
 
-        // Auto-fetch user details for the ticket if logged in
         const storedUser = localStorage.getItem('user');
         const user = storedUser ? JSON.parse(storedUser) : { name: 'Guest User' };
 
-        // Bypass forms and generate dummy ticket immediately
+        // Determine ticket status from train status
+        let ticketStatus = 'CONFIRMED';
+        if (selectedTrain.status === 'WL') ticketStatus = `WL ${selectedTrain.wlPos}`;
+        if (selectedTrain.status === 'RAC') ticketStatus = `RAC ${selectedTrain.racPos}`;
+
         const ticketResponse = {
             pnr: `8492${Math.floor(100000 + Math.random() * 900000)}`,
-            status: 'CONFIRMED',
+            status: ticketStatus,
             seatNumber: seat.label,
             berthPreference: seat.berth,
             trainName: selectedTrain.name,
@@ -105,6 +122,7 @@ export default function Home() {
         setBookingStep(4);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
 
     const handlePassengerSubmit = (data) => {
         setPassengerData(data);
@@ -145,38 +163,77 @@ export default function Home() {
         setSearchTo(temp);
     };
 
-    const handleDownloadPDF = async () => {
-        if (!ticketRef.current || !generatedTicket) return;
+    const handleDownloadPDF = () => {
+        if (!generatedTicket) return;
+        const from = selectedTrain?.from?.split(' (')[0] || 'N/A';
+        const to   = selectedTrain?.to?.split(' (')[0]   || 'N/A';
+        const paxName   = generatedTicket.passenger?.name   || 'Guest User';
+        const paxAge    = generatedTicket.passenger?.age    || 'N/A';
+        const paxGender = generatedTicket.passenger?.gender || 'N/A';
 
-        try {
-            const canvas = await html2canvas(ticketRef.current, {
-                scale: 2, // High resolution
-                backgroundColor: '#f8fafc',
-                windowWidth: 800 // Ensure layout isn't squashed on mobile capture
-            });
-            const imgData = canvas.toDataURL('image/png');
+        const html = `<!DOCTYPE html><html><head><title>RailMax Ticket - ${generatedTicket.pnr}</title>
+        <style>
+          * { margin:0; padding:0; box-sizing:border-box; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; background:#f1f5f9; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; padding:30px; }
+          .page { background:#fff; width:700px; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+          .header { background:#0B132B; color:#fff; padding:24px 32px; display:flex; justify-content:space-between; align-items:center; }
+          .header h1 { font-size:22px; font-weight:900; letter-spacing:-0.5px; }
+          .header p { font-size:11px; color:#94a3b8; margin-top:4px; }
+          .header .date { font-size:11px; color:#64748b; text-align:right; }
+          .body { padding:32px; }
+          .top-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:24px; border-bottom:1px solid #e2e8f0; }
+          .pnr-label { font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+          .pnr { font-size:30px; font-weight:900; color:#3b82f6; font-family:monospace; letter-spacing:2px; }
+          .status { background:#dcfce7; color:#166534; font-size:11px; font-weight:800; padding:6px 16px; border-radius:999px; text-transform:uppercase; }
+          .train-name { font-size:20px; font-weight:900; color:#1e293b; margin-bottom:4px; }
+          .train-num { font-size:12px; color:#64748b; }
+          .route { display:flex; align-items:center; justify-content:space-between; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 24px; margin:20px 0; }
+          .station { font-size:16px; font-weight:900; color:#1e293b; }
+          .arrow { font-size:20px; color:#cbd5e1; }
+          .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0; }
+          .cell label { font-size:10px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:5px; }
+          .cell span { font-size:13px; font-weight:800; color:#1e293b; }
+          .divider { border:none; border-top:2px dashed #e2e8f0; margin:24px 0; }
+          .pax-label { font-size:10px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+          .pax-name { font-size:15px; font-weight:800; color:#1e293b; }
+          .footer { background:#0B132B; color:#64748b; text-align:center; padding:16px; font-size:11px; }
+          @media print { body{padding:0;background:#fff;} .page{box-shadow:none;width:100%;border-radius:0;} }
+        </style></head><body>
+        <div class="page">
+          <div class="header">
+            <div><h1>RailMax</h1><p>Official E-Ticket — Computer Generated</p></div>
+            <div class="date">${new Date().toLocaleString('en-IN')}</div>
+          </div>
+          <div class="body">
+            <div class="top-row">
+              <div><div class="pnr-label">PNR Number</div><div class="pnr">${generatedTicket.pnr}</div></div>
+              <div class="status">${generatedTicket.status || 'CONFIRMED'}</div>
+            </div>
+            <div class="train-name">${generatedTicket.trainName}</div>
+            <div class="train-num">Train No: ${generatedTicket.trainNumber}</div>
+            <div class="route">
+              <div class="station">${from}</div>
+              <div class="arrow">→</div>
+              <div class="station">${to}</div>
+            </div>
+            <div class="grid">
+              <div class="cell"><label>Journey Date</label><span>${generatedTicket.date || 'N/A'}</span></div>
+              <div class="cell"><label>Seat / Berth</label><span>${generatedTicket.seatNumber} (${generatedTicket.berthPreference})</span></div>
+              <div class="cell"><label>Booking Date</label><span>${generatedTicket.bookingDate || 'N/A'}</span></div>
+              <div class="cell"><label>Class</label><span>Sleeper (SL)</span></div>
+            </div>
+            <hr class="divider" />
+            <div class="pax-label">Passenger Details</div>
+            <div class="pax-name">${paxName} &nbsp;|&nbsp; Age: ${paxAge} &nbsp;|&nbsp; ${paxGender}</div>
+          </div>
+          <div class="footer">This is a computer-generated ticket. No signature required. &nbsp;|&nbsp; RailMax — Next-Gen Railway Booking</div>
+        </div>
+        <script>window.onload = () => { window.print(); }<\/script>
+        </body></html>`;
 
-            // A4 size parameters
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-            // Add branding header
-            pdf.setFillColor(11, 19, 43); // #0B132B
-            pdf.rect(0, 0, pdfWidth, 20, 'F');
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(14);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('RailMax Official E-Ticket', 10, 13);
-
-            // Drop captured image below header
-            pdf.addImage(imgData, 'PNG', 0, 25, pdfWidth, pdfHeight);
-
-            pdf.save(`RailMax_Ticket_${generatedTicket.pnr}.pdf`);
-        } catch (error) {
-            console.error('Error generating PDF:', error);
-            alert('Failed to generate PDF. Please try again.');
-        }
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
     };
 
     const scrollToResults = () => {
@@ -245,24 +302,7 @@ export default function Home() {
                             {/* Floating Search Card */}
                             <div className="bg-white/95 backdrop-blur-xl rounded-[28px] shadow-2xl p-7 md:p-9 w-full lg:col-span-5 transform transition-all border border-white/20 relative z-30">
 
-                                {/* Toggle */}
-                                <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8 shadow-inner border border-slate-200/50 relative overflow-hidden">
-                                    <div
-                                        className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-blue-600 rounded-xl shadow-md transition-transform duration-300 ease-out ${ticketType === 'unreserved' ? 'translate-x-full' : 'translate-x-0'}`}
-                                    ></div>
-                                    <button
-                                        onClick={() => setTicketType('reserved')}
-                                        className={`flex-1 py-3 rounded-xl text-[15px] font-bold transition-colors relative z-10 ${ticketType === 'reserved' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        Reserved
-                                    </button>
-                                    <button
-                                        onClick={() => setTicketType('unreserved')}
-                                        className={`flex-1 py-3 rounded-xl text-[15px] font-bold transition-colors relative z-10 ${ticketType === 'unreserved' ? 'text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        Unreserved
-                                    </button>
-                                </div>
+
 
                                 {/* Search Form */}
                                 <div className="space-y-4 relative">
@@ -317,6 +357,8 @@ export default function Home() {
                                                     type="date"
                                                     value={date}
                                                     onChange={(e) => setDate(e.target.value)}
+                                                    min={today}
+                                                    max={maxDate}
                                                     className="w-full pl-4 pr-10 py-3.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-slate-700 font-bold text-[15px] cursor-pointer"
                                                 />
                                                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none group-focus-within:text-blue-500" />
@@ -429,12 +471,16 @@ export default function Home() {
                                                     <p className="text-3xl font-black text-slate-900">{train.fare}</p>
                                                 </div>
                                                 <div className="sm:mt-2">
-                                                    <SmartAvailability status={train.status} wlPos={train.wlPos} probability={train.probability} seats={train.seats} />
+                                                    <SmartAvailability status={train.status} wlPos={train.wlPos} racPos={train.racPos} probability={train.probability} seats={train.seats} />
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => handleBook(train)}
-                                                className={`w-full sm:w-auto px-8 py-3.5 rounded-xl text-lg font-bold transition-all active:scale-[0.98] flex items-center justify-center shadow-lg ${train.status === 'AVAILABLE' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-blue-500/25' : 'bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white shadow-orange-500/25'}`}
+                                                className={`w-full sm:w-auto px-8 py-3.5 rounded-xl text-lg font-bold transition-all active:scale-[0.98] flex items-center justify-center shadow-lg ${
+                                                    train.status === 'AVAILABLE' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-blue-500/25'
+                                                    : train.status === 'RAC' ? 'bg-gradient-to-r from-violet-600 to-purple-500 hover:from-violet-700 hover:to-purple-600 text-white shadow-violet-500/25'
+                                                    : 'bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white shadow-orange-500/25'
+                                                }`}
                                             >
                                                 Book Now <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                             </button>

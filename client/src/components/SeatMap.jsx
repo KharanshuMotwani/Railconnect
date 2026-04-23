@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Check, Info } from 'lucide-react';
+import { ArrowLeft, User, Check, Info, Clock, AlertCircle, CheckCircle, HelpCircle, Ticket } from 'lucide-react';
 
 export default function SeatMap({ train, onSeatSelected, onBack }) {
     // Mock detailed seating data format
@@ -55,7 +55,206 @@ export default function SeatMap({ train, onSeatSelected, onBack }) {
         </div>
     );
 
+    const getProbColor = (prob) => {
+        switch (prob) {
+            case 'High': return { bg: 'bg-green-50 border-green-300', text: 'text-green-700', badge: 'bg-green-100 text-green-800' };
+            case 'Medium': return { bg: 'bg-orange-50 border-orange-300', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-800' };
+            case 'Low': return { bg: 'bg-red-50 border-red-300', text: 'text-red-700', badge: 'bg-red-100 text-red-800' };
+            default: return { bg: 'bg-gray-50 border-gray-300', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800' };
+        }
+    };
+
+    const getProbIcon = (prob) => {
+        switch (prob) {
+            case 'High': return <CheckCircle className="w-5 h-5 text-green-500" />;
+            case 'Medium': return <HelpCircle className="w-5 h-5 text-orange-500" />;
+            case 'Low': return <AlertCircle className="w-5 h-5 text-red-500" />;
+            default: return null;
+        }
+    };
+
+    // ── Waitlist View ──────────────────────────────────────────────────────────
+    if (train.status === 'WL') {
+        const colors = getProbColor(train.probability);
+        const wlSeat = {
+            number: null,
+            label: `WL ${train.wlPos}`,
+            berth: 'WAITLIST',
+            price: train.fare
+        };
+
+        return (
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-in slide-in-from-right-8 duration-300 border border-gray-100">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-6 flex items-center text-white sticky top-0 z-20 shadow-md">
+                    <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-full transition-colors mr-4 focus:ring-2 focus:ring-white">
+                        <ArrowLeft className="w-6 h-6" />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-black">{train.name} <span className="opacity-75 font-normal ml-2">({train.number})</span></h2>
+                        <p className="text-orange-100 font-medium">Waitlist Booking — No seats available right now</p>
+                    </div>
+                </div>
+
+                <div className="p-8 max-w-2xl mx-auto">
+
+                    {/* WL Position Card */}
+                    <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-8 text-center mb-6 shadow-sm">
+                        <p className="text-xs font-black text-orange-400 uppercase tracking-widest mb-3">Your Waitlist Position</p>
+                        <p className="text-7xl font-black text-orange-600 mb-2">WL {train.wlPos}</p>
+                        <p className="text-orange-500 font-medium text-sm">You will be assigned a seat if a confirmed passenger cancels.</p>
+                    </div>
+
+                    {/* AI Confirmation Probability */}
+                    <div className={`rounded-2xl border-2 p-6 mb-6 flex items-start space-x-4 ${colors.bg}`}>
+                        <div className="mt-0.5 flex-shrink-0">{getProbIcon(train.probability)}</div>
+                        <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                                <p className="text-xs font-black uppercase tracking-widest text-gray-400">AI Confirmation Prediction</p>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.badge}`}>{train.probability} Probability</span>
+                            </div>
+                            <p className={`font-medium text-sm leading-snug ${colors.text}`}>
+                                {train.probability === 'High' && 'Strong chance of confirmation based on historical cancellation patterns for this route and date.'}
+                                {train.probability === 'Medium' && 'Moderate chance of confirmation. Monitor your PNR regularly — cancellations often happen 48h before departure.'}
+                                {train.probability === 'Low' && 'Low chance of confirmation. Consider booking an alternate train or a different travel date.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Info Note */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start text-sm text-blue-800 mb-8">
+                        <Info className="w-5 h-5 flex-shrink-0 mr-2 mt-0.5 text-blue-500" />
+                        <p>Seat assignment happens automatically when your waitlist is confirmed. You cannot choose a specific seat or berth preference on waitlist booking.</p>
+                    </div>
+
+                    {/* Journey Summary */}
+                    <div className="bg-indigo-50 rounded-2xl p-5 mb-6 border border-indigo-100">
+                        <div className="flex justify-between font-black text-lg mb-3 text-indigo-900">
+                            <span>{train.from.split(' (')[0]}</span>
+                            <span className="text-indigo-400">→</span>
+                            <span>{train.to.split(' (')[0]}</span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-indigo-200 pt-3">
+                            <span className="text-indigo-600 font-medium">Departure</span>
+                            <span className="font-bold">{train.dep}</span>
+                        </div>
+                    </div>
+
+                    {/* Fare + CTA */}
+                    <div className="flex justify-between items-center mb-4">
+                        <span className="text-gray-500 font-bold uppercase tracking-wide text-sm">Total Fare</span>
+                        <span className="text-3xl font-black text-orange-600">{train.fare}</span>
+                    </div>
+                    <button
+                        onClick={() => onSeatSelected(wlSeat)}
+                        className="w-full py-4 rounded-xl font-bold text-lg shadow-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition-all active:scale-[0.98] flex justify-center items-center space-x-2"
+                    >
+                        <Ticket className="w-5 h-5" />
+                        <span>Join Waitlist & Book Ticket</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ── RAC View ───────────────────────────────────────────────────────────────
+    if (train.status === 'RAC') {
+        const colors = getProbColor(train.probability);
+        const racSeat = {
+            number: null,
+            label: `RAC ${train.racPos}`,
+            berth: 'SIDE LOWER (SHARED)',
+            price: train.fare
+        };
+
+        return (
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-in slide-in-from-right-8 duration-300 border border-gray-100">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-6 flex items-center text-white sticky top-0 z-20 shadow-md">
+                    <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-full transition-colors mr-4 focus:ring-2 focus:ring-white">
+                        <ArrowLeft className="w-6 h-6" />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-black">{train.name} <span className="opacity-75 font-normal ml-2">({train.number})</span></h2>
+                        <p className="text-violet-200 font-medium">RAC Booking — Guaranteed Boarding, Shared Berth</p>
+                    </div>
+                </div>
+
+                <div className="p-8 max-w-2xl mx-auto">
+
+                    {/* RAC Position Card */}
+                    <div className="bg-violet-50 border-2 border-violet-200 rounded-2xl p-8 text-center mb-6 shadow-sm">
+                        <p className="text-xs font-black text-violet-400 uppercase tracking-widest mb-3">Your RAC Position</p>
+                        <p className="text-7xl font-black text-violet-600 mb-2">RAC {train.racPos}</p>
+                        <p className="text-violet-500 font-medium text-sm">You are guaranteed to board the train and share a Side Lower berth.</p>
+                    </div>
+
+                    {/* What is RAC? */}
+                    <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 mb-6 space-y-3">
+                        <p className="text-xs font-black text-violet-500 uppercase tracking-widest">How RAC Works</p>
+                        <div className="flex items-start space-x-3 text-sm text-violet-900">
+                            <span className="w-6 h-6 rounded-full bg-violet-200 text-violet-700 font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                            <p>You board the train and are seated on a <strong>Side Lower berth</strong>, shared with one other RAC passenger.</p>
+                        </div>
+                        <div className="flex items-start space-x-3 text-sm text-violet-900">
+                            <span className="w-6 h-6 rounded-full bg-violet-200 text-violet-700 font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                            <p>As confirmed passengers cancel, RAC is upgraded — you get a <strong>full berth automatically</strong>.</p>
+                        </div>
+                        <div className="flex items-start space-x-3 text-sm text-violet-900">
+                            <span className="w-6 h-6 rounded-full bg-violet-200 text-violet-700 font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                            <p>Unlike WL, <strong>RAC boarding is guaranteed</strong>. You will not be denied entry to the train.</p>
+                        </div>
+                    </div>
+
+                    {/* AI Confirmation Probability */}
+                    <div className={`rounded-2xl border-2 p-6 mb-6 flex items-start space-x-4 ${colors.bg}`}>
+                        <div className="mt-0.5 flex-shrink-0">{getProbIcon(train.probability)}</div>
+                        <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                                <p className="text-xs font-black uppercase tracking-widest text-gray-400">AI Full-Berth Prediction</p>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.badge}`}>{train.probability} Probability</span>
+                            </div>
+                            <p className={`font-medium text-sm leading-snug ${colors.text}`}>
+                                {train.probability === 'High' && 'Strong chance of upgrading to a full confirmed berth based on cancellation trends.'}
+                                {train.probability === 'Medium' && 'Moderate chance of full-berth upgrade. Cancellations usually happen 48h before departure.'}
+                                {train.probability === 'Low' && 'Lower chance of full-berth upgrade. You may share the berth for the entire journey.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Journey Summary */}
+                    <div className="bg-indigo-50 rounded-2xl p-5 mb-6 border border-indigo-100">
+                        <div className="flex justify-between font-black text-lg mb-3 text-indigo-900">
+                            <span>{train.from.split(' (')[0]}</span>
+                            <span className="text-indigo-400">→</span>
+                            <span>{train.to.split(' (')[0]}</span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-indigo-200 pt-3">
+                            <span className="text-indigo-600 font-medium">Departure</span>
+                            <span className="font-bold">{train.dep}</span>
+                        </div>
+                    </div>
+
+                    {/* Fare + CTA */}
+                    <div className="flex justify-between items-center mb-4">
+                        <span className="text-gray-500 font-bold uppercase tracking-wide text-sm">Total Fare</span>
+                        <span className="text-3xl font-black text-violet-600">{train.fare}</span>
+                    </div>
+                    <button
+                        onClick={() => onSeatSelected(racSeat)}
+                        className="w-full py-4 rounded-xl font-bold text-lg shadow-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white transition-all active:scale-[0.98] flex justify-center items-center space-x-2"
+                    >
+                        <Ticket className="w-5 h-5" />
+                        <span>Confirm RAC Booking</span>
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Regular Seat Map (AVAILABLE trains) ────────────────────────────────────
     return (
+
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-in slide-in-from-right-8 duration-300 border border-gray-100">
             <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6 flex items-center text-white sticky top-0 z-20 shadow-md">
                 <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-full transition-colors mr-4 focus:ring-2 focus:ring-white">
@@ -185,3 +384,5 @@ export default function SeatMap({ train, onSeatSelected, onBack }) {
         </div>
     );
 }
+
+

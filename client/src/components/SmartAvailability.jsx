@@ -1,14 +1,6 @@
 import { AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
 
-export default function SmartAvailability({ status, wlPos, probability, seats }) {
-    if (status === 'AVAILABLE') {
-        return (
-            <div className="flex items-center space-x-2 text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">AVL {seats}</span>
-            </div>
-        );
-    }
+export default function SmartAvailability({ status, wlPos, racPos, probability, seats }) {
 
     const getProbColor = (prob) => {
         switch (prob) {
@@ -28,13 +20,40 @@ export default function SmartAvailability({ status, wlPos, probability, seats })
         }
     };
 
+    // ── AVAILABLE ──────────────────────────────────────────────────────────────
+    if (status === 'AVAILABLE') {
+        return (
+            <div className="flex items-center space-x-2 text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm">AVL {seats}</span>
+            </div>
+        );
+    }
+
+    // ── RAC ────────────────────────────────────────────────────────────────────
+    if (status === 'RAC') {
+        return (
+            <div className="flex flex-col items-end group relative cursor-help">
+                <div className="flex items-center space-x-2 text-violet-700 font-bold bg-violet-50 px-3 py-1 rounded-full border border-violet-300 shadow-sm">
+                    <span className="text-sm">RAC {racPos}</span>
+                </div>
+                <div className="absolute top-full right-0 mt-2 w-52 bg-white shadow-xl rounded-xl p-3 border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none transform scale-95 group-hover:scale-100">
+                    <p className="text-xs text-gray-500 mb-1 font-semibold uppercase tracking-wider">RAC — Shared Berth</p>
+                    <p className="text-xs text-gray-500 mb-2 leading-tight">You board the train and share a side-lower berth. Full berth assigned on cancellation.</p>
+                    <div className={`flex items-center px-2 py-1 rounded-md border text-xs font-bold ${getProbColor(probability)}`}>
+                        {getProbIcon(probability)} {probability} Confirmation Chance
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ── WL ─────────────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col items-end group relative cursor-help">
             <div className="flex items-center space-x-2 text-orange-600 font-bold bg-orange-50 px-3 py-1 rounded-full border border-orange-200 shadow-sm">
                 <span className="text-sm">WL {wlPos}</span>
             </div>
-
-            {/* Tooltip implementation for Smart Probability */}
             <div className="absolute top-full right-0 mt-2 w-48 bg-white shadow-xl rounded-xl p-3 border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none transform scale-95 group-hover:scale-100">
                 <p className="text-xs text-gray-500 mb-1 font-semibold uppercase tracking-wider">AI Prediction</p>
                 <div className={`flex items-center px-2 py-1 rounded-md border text-xs font-bold ${getProbColor(probability)}`}>
