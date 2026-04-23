@@ -51,14 +51,31 @@ export default function Bookings() {
 
             <div className="space-y-6">
                 {bookings.map((ticket, index) => {
-                    const statusColor = ticket.status === 'CONFIRMED' || ticket.status === 'CHART PREPARED'
-                        ? 'text-emerald-600 bg-emerald-100 border-emerald-200'
-                        : 'text-orange-600 bg-orange-100 border-orange-200';
+                    const s = ticket.status || '';
+                    const isConfirmed = s === 'CONFIRMED' || s === 'CHART PREPARED';
+                    const isWL = s.startsWith('WL');
+                    const isRAC = s.startsWith('RAC');
+
+                    const statusColor = isConfirmed
+                        ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
+                        : isWL
+                        ? 'text-orange-600 bg-orange-50 border-orange-200'
+                        : isRAC
+                        ? 'text-violet-600 bg-violet-50 border-violet-200'
+                        : 'text-slate-600 bg-slate-50 border-slate-200';
+
+                    const accentColor = isConfirmed
+                        ? 'bg-emerald-500'
+                        : isWL
+                        ? 'bg-orange-500'
+                        : isRAC
+                        ? 'bg-violet-500'
+                        : 'bg-indigo-500';
 
                     return (
                         <div key={index} className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all duration-300 relative overflow-hidden group">
                             {/* Decorative Edge Glow */}
-                            <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className={`absolute top-0 left-0 w-2 h-full ${accentColor} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
 
                             <div className="flex flex-col xl:flex-row justify-between w-full">
 
