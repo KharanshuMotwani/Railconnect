@@ -482,7 +482,8 @@ export default function Home() {
                                                     : 'bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-white shadow-orange-500/25'
                                                 }`}
                                             >
-                                                Book Now <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                {train.status === 'WL' ? 'Join Waitlist' : train.status === 'RAC' ? 'Book RAC' : 'Book Now'}
+                                                <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                             </button>
                                         </div>
 
