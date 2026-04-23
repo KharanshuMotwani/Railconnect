@@ -1,26 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Train, User, LogOut, ChevronDown } from 'lucide-react';
+import { Train, User, LogOut, ChevronDown, Wallet } from 'lucide-react';
+
+const WALLET_KEY = 'rwallet_balance';
+const WALLET_INITIAL = 50000;
+
+export function getWalletBalance() {
+    const stored = localStorage.getItem(WALLET_KEY);
+    if (stored === null) {
+        localStorage.setItem(WALLET_KEY, WALLET_INITIAL);
+        return WALLET_INITIAL;
+    }
+    return parseInt(stored, 10);
+}
+
+export function deductWallet(amount) {
+    const balance = getWalletBalance();
+    const newBalance = balance - amount;
+    localStorage.setItem(WALLET_KEY, newBalance);
+    window.dispatchEvent(new Event('walletUpdate'));
+    return newBalance;
+}
 
 export default function Navbar() {
     const location = useLocation();
     const path = location.pathname;
     const [user, setUser] = useState(null);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [balance, setBalance] = useState(getWalletBalance());
 
     useEffect(() => {
         const checkUser = () => {
             const storedUser = localStorage.getItem('user');
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
-            } else {
-                setUser(null);
-            }
+            setUser(storedUser ? JSON.parse(storedUser) : null);
         };
+        const updateWallet = () => setBalance(getWalletBalance());
 
         checkUser();
         window.addEventListener('authChange', checkUser);
-        return () => window.removeEventListener('authChange', checkUser);
+        window.addEventListener('walletUpdate', updateWallet);
+        return () => {
+            window.removeEventListener('authChange', checkUser);
+            window.removeEventListener('walletUpdate', updateWallet);
+        };
     }, []);
 
     const handleLogout = () => {
@@ -35,6 +57,9 @@ export default function Navbar() {
         }
         return "hover:text-white transition-colors text-slate-300";
     };
+
+    const formattedBalance = `₹${balance.toLocaleString('en-IN')}`;
+    const isLow = balance < 1000;
 
     return (
         <nav className="bg-[#0B132B]/95 backdrop-blur-md border-b border-slate-800 text-white px-8 py-4 sticky top-0 z-50 transition-all duration-300">
@@ -53,44 +78,59 @@ export default function Navbar() {
                     <Link to="/pnr-status" className={getLinkClass('/pnr-status')}>PNR Status</Link>
                 </div>
 
-                {user ? (
-                    <div className="relative">
-                        <div
-                            className="flex items-center space-x-3 cursor-pointer group bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-full transition-colors border border-slate-700"
-                            onClick={() => setShowDropdown(!showDropdown)}
-                        >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-sm shadow-md">
-                                {user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="font-semibold text-sm hidden sm:block">{user.name.split(' ')[0]}</span>
-                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
-                        </div>
+                <div className="flex items-center space-x-3">
+                    {/* RWallet Badge */}
+                    <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-sm font-bold transition-all ${
+                        isLow
+                        ? 'bg-red-500/10 border-red-500/40 text-red-400'
+                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    }`}>
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>{formattedBalance}</span>
+                    </div>
 
-                        {showDropdown && (
-                            <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl shadow-slate-900/20 border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                                    <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
-                                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    {user ? (
+                        <div className="relative">
+                            <div
+                                className="flex items-center space-x-3 cursor-pointer group bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-full transition-colors border border-slate-700"
+                                onClick={() => setShowDropdown(!showDropdown)}
+                            >
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-sm shadow-md">
+                                    {user.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div className="py-1">
-                                    <Link to="/bookings" onClick={() => setShowDropdown(false)} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium">
-                                        <User className="w-4 h-4 mr-2" /> My Profile
-                                    </Link>
-                                    <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold transition-colors">
-                                        <LogOut className="w-4 h-4 mr-2" /> Sign out
-                                    </button>
-                                </div>
+                                <span className="font-semibold text-sm hidden sm:block">{user.name.split(' ')[0]}</span>
+                                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                             </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex space-x-4 md:space-x-6 items-center">
-                        <Link to="/login" className="text-[15px] font-semibold text-slate-300 hover:text-white transition-colors">Login</Link>
-                        <Link to="/register" className="bg-white hover:bg-slate-100 text-[#0B132B] px-6 py-2.5 rounded-lg text-[15px] font-bold shadow-md transform hover:-translate-y-0.5 transition-all">
-                            Register
-                        </Link>
-                    </div>
-                )}
+
+                            {showDropdown && (
+                                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl shadow-slate-900/20 border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                        <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
+                                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                        <p className={`text-xs font-bold mt-1 ${isLow ? 'text-red-500' : 'text-emerald-600'}`}>
+                                            RWallet: {formattedBalance}
+                                        </p>
+                                    </div>
+                                    <div className="py-1">
+                                        <Link to="/bookings" onClick={() => setShowDropdown(false)} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium">
+                                            <User className="w-4 h-4 mr-2" /> My Profile
+                                        </Link>
+                                        <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold transition-colors">
+                                            <LogOut className="w-4 h-4 mr-2" /> Sign out
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex space-x-4 md:space-x-6 items-center">
+                            <Link to="/login" className="text-[15px] font-semibold text-slate-300 hover:text-white transition-colors">Login</Link>
+                            <Link to="/register" className="bg-white hover:bg-slate-100 text-[#0B132B] px-6 py-2.5 rounded-lg text-[15px] font-bold shadow-md transform hover:-translate-y-0.5 transition-all">
+                                Register
+                            </Link>
+                        </div>
+                    )}
+                </div>
             </div>
         </nav>
     );

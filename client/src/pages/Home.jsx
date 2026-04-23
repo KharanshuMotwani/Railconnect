@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Train, Calendar, MapPin, AlertCircle, CheckCircle, ChevronDown, ChevronRight, ArrowRightLeft, Clock, Zap, Star } from 'lucide-react';
+import { Search, Train, Calendar, MapPin, AlertCircle, CheckCircle, ChevronDown, ChevronRight, ArrowRightLeft, Clock, Zap, Star, Wallet } from 'lucide-react';
+import { deductWallet, getWalletBalance } from '../components/Navbar';
 import SeatMap from '../components/SeatMap';
 import PassengerForm from '../components/PassengerForm';
 import SmartAvailability from '../components/SmartAvailability';
@@ -110,7 +111,20 @@ export default function Home() {
         const storedUser = localStorage.getItem('user');
         const user = storedUser ? JSON.parse(storedUser) : { name: 'Guest User' };
 
-        // Determine ticket status from train status
+        // Parse fare from string like '₹2,850' → 2850
+        const fareNum = parseInt((selectedTrain.fare || '₹0').replace(/[^0-9]/g, ''), 10) || 0;
+
+        // Check RWallet balance
+        const currentBalance = getWalletBalance();
+        if (currentBalance < fareNum) {
+            alert(`Insufficient RWallet balance!\n\nFare: ₹${fareNum.toLocaleString('en-IN')}\nYour balance: ₹${currentBalance.toLocaleString('en-IN')}\n\nPlease top up your RWallet to continue.`);
+            return;
+        }
+
+        // Deduct fare from RWallet
+        const newBalance = deductWallet(fareNum);
+
+        // Determine ticket status
         let ticketStatus = 'CONFIRMED';
         if (selectedTrain.status === 'WL') ticketStatus = `WL ${selectedTrain.wlPos}`;
         if (selectedTrain.status === 'RAC') ticketStatus = `RAC ${selectedTrain.racPos}`;
@@ -121,7 +135,10 @@ export default function Home() {
             seatNumber: seat.label,
             berthPreference: seat.berth,
             trainName: selectedTrain.name,
-            trainNumber: selectedTrain.number
+            trainNumber: selectedTrain.number,
+            fare: selectedTrain.fare,
+            walletDeducted: fareNum,
+            walletBalance: newBalance,
         };
 
         const fullTicket = {
@@ -588,6 +605,20 @@ export default function Home() {
                                         <p className="text-2xl font-black text-slate-800">{generatedTicket?.seatNumber || selectedSeat.label} <span className="text-lg text-slate-400 font-medium tracking-normal">({generatedTicket?.berthPreference || selectedSeat.berth})</span></p>
                                     </div>
                                 </div>
+
+                                {/* RWallet deduction strip */}
+                                {generatedTicket?.walletDeducted > 0 && (
+                                    <div className="mt-6 pt-5 border-t border-dashed border-slate-300 flex items-center justify-between z-10 relative">
+                                        <div className="flex items-center space-x-2 text-emerald-600">
+                                            <Wallet className="w-4 h-4" />
+                                            <span className="text-sm font-bold">Paid via RWallet</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-slate-800">− {generatedTicket.fare}</p>
+                                            <p className="text-xs text-slate-400 font-medium">Balance: ₹{generatedTicket.walletBalance?.toLocaleString('en-IN')}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-4 w-full">
