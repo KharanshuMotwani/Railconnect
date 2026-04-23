@@ -4,37 +4,43 @@ import { Train, User, LogOut, ChevronDown, Wallet } from 'lucide-react';
 
 export const WALLET_INITIAL = 50000;
 
-/** Returns the wallet key scoped to a specific user ID. */
-export function getWalletKey(userId) {
-    return `rwallet_${userId}`;
+/**
+ * Derives a stable wallet key from a user object.
+ * Uses id → email → 'guest' as fallback chain so it always works
+ * regardless of what fields the API returns.
+ */
+export function getWalletKey(user) {
+    const uid = user?.id ?? user?.userId ?? user?.user_id ?? user?.email ?? 'guest';
+    return `rwallet_${uid}`;
 }
 
 /**
- * Reads the wallet balance for the given userId.
- * Returns null if the user is not logged in or has no wallet yet.
+ * Reads the wallet balance for the given user object.
+ * Returns null if no user or wallet not yet seeded.
  */
-export function getWalletBalance(userId) {
-    if (!userId) return null;
-    const stored = localStorage.getItem(getWalletKey(userId));
+export function getWalletBalance(user) {
+    if (!user) return null;
+    const stored = localStorage.getItem(getWalletKey(user));
     return stored !== null ? parseInt(stored, 10) : null;
 }
 
 /**
- * Initialises the wallet for a user with WALLET_INITIAL only if not set yet.
- * Safe to call on every login — will NOT overwrite an existing balance.
+ * Seeds ₹50,000 for a user only if not already set.
+ * Safe to call on every login/mount — will NOT overwrite an existing balance.
  */
-export function initWalletIfNeeded(userId) {
-    const key = getWalletKey(userId);
+export function initWalletIfNeeded(user) {
+    if (!user) return;
+    const key = getWalletKey(user);
     if (localStorage.getItem(key) === null) {
         localStorage.setItem(key, WALLET_INITIAL);
     }
 }
 
-export function deductWallet(userId, amount) {
-    if (!userId) return null;
-    const balance = getWalletBalance(userId) ?? 0;
+export function deductWallet(user, amount) {
+    if (!user) return null;
+    const balance = getWalletBalance(user) ?? 0;
     const newBalance = balance - amount;
-    localStorage.setItem(getWalletKey(userId), newBalance);
+    localStorage.setItem(getWalletKey(user), newBalance);
     window.dispatchEvent(new Event('walletUpdate'));
     return newBalance;
 }
@@ -52,8 +58,8 @@ export default function Navbar() {
             const parsedUser = storedUser ? JSON.parse(storedUser) : null;
             setUser(parsedUser);
             if (parsedUser) {
-                initWalletIfNeeded(parsedUser.id);
-                setBalance(getWalletBalance(parsedUser.id));
+                initWalletIfNeeded(parsedUser);
+                setBalance(getWalletBalance(parsedUser));
             } else {
                 setBalance(null);
             }
@@ -62,7 +68,7 @@ export default function Navbar() {
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
                 const u = JSON.parse(storedUser);
-                setBalance(getWalletBalance(u.id));
+                setBalance(getWalletBalance(u));
             }
         };
 

@@ -115,14 +115,14 @@ export default function Home() {
         const fareNum = parseInt((selectedTrain.fare || '₹0').replace(/[^0-9]/g, ''), 10) || 0;
 
         // Check RWallet balance
-        const currentBalance = getWalletBalance(user.id);
+        const currentBalance = getWalletBalance(user);
         if (currentBalance === null || currentBalance < fareNum) {
             alert(`Insufficient RWallet balance!\n\nFare: ₹${fareNum.toLocaleString('en-IN')}\nYour balance: ₹${(currentBalance ?? 0).toLocaleString('en-IN')}\n\nPlease top up your RWallet to continue.`);
             return;
         }
 
         // Deduct fare from RWallet
-        const newBalance = deductWallet(user.id, fareNum);
+        const newBalance = deductWallet(user, fareNum);
 
         // Determine ticket status
         let ticketStatus = 'CONFIRMED';

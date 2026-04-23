@@ -27,14 +27,14 @@ export default function Auth() {
             if (isLogin) {
                 const res = await loginUser(formData.email, formData.password);
                 localStorage.setItem('user', JSON.stringify(res.data.user));
-                initWalletIfNeeded(res.data.user.id);
+                initWalletIfNeeded(res.data.user);
                 window.dispatchEvent(new Event('authChange'));
                 setSuccess(`Welcome back, ${res.data.user.name}!`);
                 setTimeout(() => navigate('/'), 1500);
             } else {
                 const res = await registerUser(formData.name, formData.email, formData.password);
                 localStorage.setItem('user', JSON.stringify(res.data.user));
-                initWalletIfNeeded(res.data.user.id);
+                initWalletIfNeeded(res.data.user);
                 window.dispatchEvent(new Event('authChange'));
                 setSuccess(`Account created successfully! Welcome, ${res.data.user.name}.`);
                 setTimeout(() => navigate('/'), 1500);
