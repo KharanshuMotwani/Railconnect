@@ -144,6 +144,8 @@ export default function Home() {
         const fullTicket = {
             ...ticketResponse,
             passenger: { name: user.name, age: 'N/A', gender: 'N/A' },
+            from: selectedTrain.from,
+            to: selectedTrain.to,
             date: date || new Date().toISOString().split('T')[0],
             bookingDate: new Date().toLocaleDateString()
         };
@@ -169,6 +171,8 @@ export default function Home() {
         const fullTicket = {
             ...ticketResponse,
             passenger: passengerData,
+            from: selectedTrain.from,
+            to: selectedTrain.to,
             date: date || new Date().toISOString().split('T')[0],
             bookingDate: new Date().toLocaleDateString()
         };
@@ -307,7 +311,7 @@ export default function Home() {
                             <img
                                 src="https://images.unsplash.com/photo-1541427468627-2b4ce2393d25?q=80&w=2070&auto=format&fit=crop"
                                 alt="Train background"
-                                className="w-full h-full object-cover opacity-60 scale-105 transform hover:scale-100 transition-transform duration-[20s]"
+                                className="w-full h-full object-cover opacity-60 scale-105 transform hover:scale-100 transition-transform duration-[20000ms]"
                             />
                         </div>
 

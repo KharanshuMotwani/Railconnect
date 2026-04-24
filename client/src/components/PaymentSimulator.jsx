@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, CreditCard, ShieldCheck, Zap, Lock, ScanLine } from 'lucide-react';
 import { bookTicket } from '../services/api';
 
-export default function PaymentSimulator({ train, seat, onSuccess, onBack }) {
+export default function PaymentSimulator({ train, seat, passenger, onSuccess, onBack }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [method, setMethod] = useState('UPI'); // UPI, CARD
 
@@ -44,7 +44,7 @@ export default function PaymentSimulator({ train, seat, onSuccess, onBack }) {
                 </div>
                 <div className="text-right z-10 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700 backdrop-blur-sm self-end md:self-auto">
                     <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Amount to Pay</p>
-                    <p className="text-2xl font-black text-white">{seat.price}</p>
+                    <p className="text-2xl font-black text-white">{seat?.price ?? train?.fare ?? '—'}</p>
                 </div>
             </div>
 
@@ -115,7 +115,7 @@ export default function PaymentSimulator({ train, seat, onSuccess, onBack }) {
                                         onClick={handlePay}
                                         className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-xl shadow-gray-900/20 active:scale-95 transition-all flex justify-center items-center"
                                     >
-                                        Pay {seat.price} Securely
+                                        Pay {seat?.price ?? train?.fare} Securely
                                     </button>
                                 </div>
                             )}
@@ -133,7 +133,7 @@ export default function PaymentSimulator({ train, seat, onSuccess, onBack }) {
                                         onClick={handlePay}
                                         className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-xl shadow-gray-900/20 active:scale-95 transition-all mt-6 flex justify-center items-center"
                                     >
-                                        Pay {seat.price} Securely <Lock className="ml-2 w-4 h-4 text-gray-400" />
+                                        Pay {seat?.price ?? train?.fare} Securely <Lock className="ml-2 w-4 h-4 text-gray-400" />
                                     </button>
                                 </div>
                             )}

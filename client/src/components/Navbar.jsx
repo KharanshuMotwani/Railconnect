@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Train, User, LogOut, ChevronDown, Wallet } from 'lucide-react';
+import { Train, User, LogOut, ChevronDown, Wallet, Menu, X } from 'lucide-react';
 
 export const WALLET_INITIAL = 50000;
 
@@ -50,7 +50,9 @@ export default function Navbar() {
     const path = location.pathname;
     const [user, setUser] = useState(null);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [balance, setBalance] = useState(null);
+    const dropdownRef = useRef(null);
 
     useEffect(() => {
         const checkUser = () => {
@@ -75,14 +77,25 @@ export default function Navbar() {
         checkUser();
         window.addEventListener('authChange', checkUser);
         window.addEventListener('walletUpdate', updateWallet);
+
+        // Close dropdown on outside click
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+
         return () => {
             window.removeEventListener('authChange', checkUser);
             window.removeEventListener('walletUpdate', updateWallet);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('user');
+        setUser(null);
         setBalance(null);
         window.dispatchEvent(new Event('authChange'));
         setShowDropdown(false);
@@ -118,7 +131,7 @@ export default function Navbar() {
                 <div className="flex items-center space-x-3">
                     {/* RWallet Badge — only visible when logged in */}
                     {user && balance !== null && (
-                        <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-sm font-bold transition-all ${
+                        <div className={`hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-sm font-bold transition-all ${
                             isLow
                             ? 'bg-red-500/10 border-red-500/40 text-red-400'
                             : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
@@ -129,7 +142,7 @@ export default function Navbar() {
                     )}
 
                     {user ? (
-                        <div className="relative">
+                        <div className="relative" ref={dropdownRef}>
                             <div
                                 className="flex items-center space-x-3 cursor-pointer group bg-slate-800/50 hover:bg-slate-800 px-3 py-1.5 rounded-full transition-colors border border-slate-700"
                                 onClick={() => setShowDropdown(!showDropdown)}
@@ -152,7 +165,7 @@ export default function Navbar() {
                                     </div>
                                     <div className="py-1">
                                         <Link to="/bookings" onClick={() => setShowDropdown(false)} className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 font-medium">
-                                            <User className="w-4 h-4 mr-2" /> My Profile
+                                            <User className="w-4 h-4 mr-2" /> My Bookings
                                         </Link>
                                         <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold transition-colors">
                                             <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -162,15 +175,53 @@ export default function Navbar() {
                             )}
                         </div>
                     ) : (
-                        <div className="flex space-x-4 md:space-x-6 items-center">
+                        <div className="hidden md:flex space-x-4 md:space-x-6 items-center">
                             <Link to="/login" className="text-[15px] font-semibold text-slate-300 hover:text-white transition-colors">Login</Link>
                             <Link to="/register" className="bg-white hover:bg-slate-100 text-[#0B132B] px-6 py-2.5 rounded-lg text-[15px] font-bold shadow-md transform hover:-translate-y-0.5 transition-all">
                                 Register
                             </Link>
                         </div>
                     )}
+
+                    {/* Mobile hamburger */}
+                    <button
+                        className="lg:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors ml-1"
+                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                        aria-label="Toggle menu"
+                    >
+                        {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                    </button>
                 </div>
             </div>
+
+            {/* Mobile dropdown menu */}
+            {showMobileMenu && (
+                <div className="lg:hidden border-t border-slate-800 mt-4 pt-4 pb-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                    {[
+                        { to: '/', label: 'Home' },
+                        { to: '/schedule', label: 'Schedule' },
+                        { to: '/bookings', label: 'Bookings' },
+                        { to: '/pnr-status', label: 'PNR Status' },
+                    ].map(({ to, label }) => (
+                        <Link
+                            key={to}
+                            to={to}
+                            onClick={() => setShowMobileMenu(false)}
+                            className={`block px-4 py-3 rounded-xl font-semibold transition-colors ${
+                                path === to ? 'bg-blue-600/20 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                            }`}
+                        >
+                            {label}
+                        </Link>
+                    ))}
+                    {!user && (
+                        <div className="pt-2 flex space-x-3 px-4">
+                            <Link to="/login" onClick={() => setShowMobileMenu(false)} className="flex-1 text-center py-2.5 rounded-lg font-semibold text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 transition-colors">Login</Link>
+                            <Link to="/register" onClick={() => setShowMobileMenu(false)} className="flex-1 text-center py-2.5 rounded-lg font-bold bg-white text-[#0B132B] hover:bg-slate-100 transition-colors">Register</Link>
+                        </div>
+                    )}
+                </div>
+            )}
         </nav>
     );
 }

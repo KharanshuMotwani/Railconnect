@@ -1,4 +1,5 @@
 import { Train } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
     return (
@@ -14,9 +15,9 @@ export default function Footer() {
                 <div>
                     <h5 className="text-white font-bold mb-4">Quick Links</h5>
                     <ul className="space-y-2 text-sm">
-                        <li><a href="#" className="hover:text-white transition-colors">Search Trains</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Check PNR Status</a></li>
-                        <li><a href="#" className="hover:text-white transition-colors">Live Train Status</a></li>
+                        <li><Link to="/" className="hover:text-white transition-colors">Search Trains</Link></li>
+                        <li><Link to="/pnr-status" className="hover:text-white transition-colors">Check PNR Status</Link></li>
+                        <li><Link to="/schedule" className="hover:text-white transition-colors">Live Train Status</Link></li>
                     </ul>
                 </div>
                 <div>
@@ -27,6 +28,9 @@ export default function Footer() {
                         <li><a href="#" className="hover:text-white transition-colors">Cancellation Rules</a></li>
                     </ul>
                 </div>
+            </div>
+            <div className="max-w-7xl mx-auto px-6 mt-8 pt-6 border-t border-slate-800 text-center text-sm">
+                <p>© {new Date().getFullYear()} RailConnect. For demo purposes only — not affiliated with IRCTC or Indian Railways.</p>
             </div>
         </footer>
     );

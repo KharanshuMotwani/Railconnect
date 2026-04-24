@@ -140,7 +140,7 @@ export const checkPNRStatus = async (pnr) => {
                     departureTime: train.dep,
                     arrivalTime: train.arr,
                     date: new Date().toISOString().split('T')[0],
-                    pasengers: 1,
+                    passengers: 1,
                     status: responseStatus,
                     passengerStatus: passengerStatus,
                     bookingClass: '3A'
